@@ -1,4 +1,4 @@
-I = imread ('C:\Users\ART\Drive\Google Диск\Учеба\Практика fuzzy art map\matlab\ARTMAP\image\sample_5.bmp');
+I = imread ('\image\sample_5.bmp');
 ID = im2double(I);
 width = 32;
 height = 320;
@@ -34,24 +34,21 @@ for num_image = 1:1:10
 end;
 
 
-
 sup = [1, 1, 2, 3, 3, 2, 4, 4, 5, 5];
-
 
 ccInput = ART_Complement_Code(input);
 
-
-net = ARTMAP_Create_Network(32, 5);
-
+net = ARTMAP_Create_Network(128, 5);
 
 newNet = ARTMAP_Learn(net, ccInput, sup);
 
+old = newNet;
 
-%newInput = [0;0;0;1;0;1;0;1;0;0;1;1;0;0;0;1;];
-newInput = [1;0;0;1;0;0;1;1;0;0;0;1;0;0;0;1];
-%newInput = [1;1;1;1;1;1;1;1;0;1;1;1;1;1;0;1];
-%newInput = [1;0.7;0.5;1; 1;0;0;1; 1;1;1;1; 0;0;0;1;];
+
+newInput = feature_image('..\image\sample_b.bmp');
+
 ccNewInput = ART_Complement_Code(newInput);
+
 [class, newNet] = ARTMAP_Classify(newNet, ccNewInput);
 class
 
