@@ -89,34 +89,127 @@ $$
 $$
 
 
+Fuzzy ARTMAP состоит из 2 модулей ART c нечеткой логикой, $ART_a$ и $ART_b$, связанных ART модулем $F_{ab}$, называемым map field. $ART_a$ и $ART_b$ создают стабильное распознавание категорий в зависимости от произвольных входных данных. Каждый модуль получает либо входной, либо выходной компонент каждой пары эталонов для ассоциации. Главная функция в map field связать представленные компоненты пар эталонов. Когда появляется несоответствие между предсказанным $ART_a$ и фактическим $ART_b$ входом, map field подсистема активирует match tracking (отслеживание соответствия). Match tracking увеличивает параметр бдительности $\rho_a$ в $ART_a$ до значения, которое вызывает несоответствие и reset (сброс) в $ART_a$ модуле. Затем активируется система поиска $ART_a$, чтобы найти категорию, которая правильно предсказывают текущий вход $ART_b$ или предыдущую незафиксированную категорию $ART_a$.
+
+Алгоритм Fuzzy ARTMAP:
+
+\textbf{Шаг 0}
+
+Пусть $m$  -- количество входных элементов, $n$ -- выходных элементов, $M$ -- количество элементов в $F_2^a$, $N$ -- количество элементов в $F_2^b$.
+
+Изначально все веса адаптации устанавливаются единичными:
+$$
+	W_{j1}^a(0) = \ldots = W_{j2m}^a(0) = 1 
+$$
+$$
+	W_{k1}^b(0) = \ldots = W_{k2n}^b(0) = 1 
+$$
+$$
+	W_{jk}^{ab}(0) = 1 
+$$
+где $j=1, \ldots, M$ и $k=1, \ldots, N$
+
+Инициализация всех узлов $ART_a$ и $ART_b$ модулей приводит их в состояние uncomitted. Устанавливаются параметры: параметр выбора $\alpha > 0$; параметр скорости обучения $\beta \in [0,1]$ и параметры бдительности $\rho_a, \rho_b, \rho_{ab} \in [0,1]$. Параметр бдительности $\rho_a$ будет базовым $\bar{\rho}_a$.
+
+\textbf{Шаг 1}
+
+Получаем вектор $a$ и соответствующий классу вектор $b$. Вектор $a$ -- вход в модуль $ART_a$, $b$ -- вход в модуль $ART_b$. Все входные значения вектора $a$ должны быть в пределах $[0,1]$. Производится дополнительное кодирование (описано выше).
+$$ 
+	A = (a,a^C)
+$$
+
+$$ 
+	B = (b,b^C)
+$$
+
+\textbf{Шаг 2}
+
+Для каждого входа $A$ и $B$ j-й узел слоя $F_2^a$ и k-й узел слоя $F_2^b$ дают
+$$ 
+	T_j (A) = \frac{A \wedge W_j^a}{\alpha + |W_j^a|} 
+$$
+$$ 
+	T_k (B) = \frac{B \wedge W_k^b}{\alpha + |W_k^b|} 
+$$
+
+\textbf{Шаг 3}
+
+Используется правило "победитель забирает все" для выбора верного класса распознавания. Здесь выходы максимальных весов суммируются. Победители в $ART_a$ и $ART_b$ индексируются J и K соответственно, где $J = \max{T_j(A):j=1, \ldots, M}$ и $K = \max{T_k(B):k=1, \ldots, N}$. Если получается более одного победителя с одинаковыми максимальными значениями, то выбирается с меньшим индексом.
+
+\textbf{Шаг 4}
+
+Проверяется критерий бдительности. Если узлы J и K удовлетворяют условиям
+$$
+	\frac{A \wedge W_J^a}{|A|} \geq \rho_a \quad and \quad \frac{B \wedge W_K^b}{|B|} \geq \rho_b
+$$
+тогда они считаются представителями входных классов A и B и переходят к Шагу 5.  После того, как категории J и K выбраны для обучения они переходят в состояние committed. Если они нарушают условие выше, то узлы J и K сбрасываются, и переходят к Шагу 3. Происходит поиск других узлов в $F_2^a$ и $F_2^b$ которые удовлетворяют критериям.
+
+\textbf{Шаг 5}
+	
+Проверяется критерий match tracking. Если
+$$ 
+	\frac{|y^b \wedge W_J^{ab}|}{|y^b|} \geq \rho_{ab}
+$$
+тогда достигнуто необходимое отображение и переходим к Шагу 6.
+
+Если
+$$ 
+	\frac{|y^b \wedge W_J^{ab}|}{|y^b|} < \rho_{ab}
+$$
+то, соответствие между J и K не достигнуто. В этом случае параметр бдительности $\rho_a$ увеличивается, пока не станет больше чем $|A \wedge W_j^a| / |A|$; это приводит к сбросу в $ART_a$ и переходу на Шаг 3 с новым параметром бдительности для выбора другого узла в $F_2^a$, который будет иметь требуемое соответствие.
+
+\textbf{Шаг 6}
+
+Обновляются веса:
+$$ 
+	W_j(t) = \beta(A \wedge W_J(t-1)) + (1-\beta) W_J (t-1)
+$$
+$$ 
+	W_K(t) = \beta(A \wedge W_K(t-1)) + (1-\beta) W_K (t-1)
+$$
+где параметр скорости обучения $\beta$ выбирается из диапазона $[0,1]$. Для быстрого обучения $\beta = 1$. Веса узлов проигравших в обновлении не нуждаются:$W_j^a, j\neq J$ , $W_k^b, k\neq K$
+
+Веса map field для быстрого обучения определяются
+\begin{displaymath}
+	W_{jk}^{ab} (t) = \left\{
+	\begin{array}{l}
+		1, \mbox{если} j=J, k=K \\
+		0, \mbox{если} j=J, k\neq K \\
+		W_{jk}^{ab}(t-1), \mbox{в других случаях}
+	\end{array}
+\right .
+\end{displaymath}
+
+\textbf{Шаг 7}
+
+Переход к Шагу 1 и распознавание следующей пары.
+
+\begin{center}
+	Архитектура сети Fuzzy ARTMAP
+
+	\includegraphics[width=10cm]{images/1.jpg}
+\end{center}
+
+
 
 
 \subsection{Состав и описание ПМО}
 
 Программно-математическое обеспечение разрабатывалось в среде математического программирования Matlab.
 
+ПМО включает следующие функции:
+\begin{itemize}
+	\item ARTMAP_Add_New_Category - добавление новой категории(класса) в сеть;
+	\item ARTMAP_Classify - распознает образец на основе уже обученной сети;
+	\item ARTMAP_Create_Network - создает новую сеть;
+	\item ARTMAP_Learn - обучает сеть на заданной эталонной выборке;
+	\item ART_Activate_Categories - вычисление значений активации для каждого образца;
+	\item ART_Calculate_Match - вычисление степени соответствия;
+	\item ART_Complement_Code - выполняет дополнительное кодирование над входными данными;
+	\item ART_Update_Weights - обновляет веса для победившего класса.
+\end{itemize}
 
-%    ARTMAP_Add_New_Category - Adds a new category to the ARTMAP network.
-%    ARTMAP_Classify - Uses a trained ARTMAP network to classify a dataset.
-%    ARTMAP_Create_Network - Creates the ARTMAP network.
-%    ARTMAP_Learn - Trains a given ARTMAP network on a dataset.
-
-% Functions required by this software:
-%    ART_Activate_Categories - Required by ARTMAP_Classify and ARTMAP_Learn
-%    ART_Calculate_Match - Required by ARTMAP_Classify and ARTMAP_Learn
-%    ART_Complement_Code - Required if complement coding of inputs is used
-%    ART_Update_Weights - Required by ARTMAP_Learn
-
-% Description of the system architecture:
-%    The above set of functions is used to create, train, and use an ARTMAP
-%    network to classify a dataset. While all of the functions are 
-%    necessary, only three of them are meant to be called by the user. 
-%    Those functions are as follows:
-
-%    Functions available to user:
-%        ARTMAP_Classify
-%        ARTMAP_Create_Network
-%        ARTMAP_Learn
+ARTMAP_Example - содержит пример использования сети Fuzzy ARTMAP, используя вышеперечисленные функции, в нем непосредственно используются функции:
 
 
 \subsection{Тестирование ПМО}
