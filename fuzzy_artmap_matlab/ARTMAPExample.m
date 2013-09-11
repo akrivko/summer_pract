@@ -1,4 +1,4 @@
-I = imread ('C:\Users\ART\Documents\GitHub\summer_pract\fuzzy_artmap_matlab\image\sample_5.bmp');
+I = imread ('sample_5.bmp');
 ID = im2double(I);
 width = 32;
 height = 320;
@@ -43,7 +43,7 @@ newNet = ARTMAP_Learn(net, ccInput, sup);
 old = newNet;
 
 
-newInput = feature_image('C:\Users\ART\Documents\GitHub\summer_pract\fuzzy_artmap_matlab\image\sample_b.bmp');
+newInput = feature_image('sample_a.bmp');
 
 ccNewInput = ART_Complement_Code(newInput);
 
